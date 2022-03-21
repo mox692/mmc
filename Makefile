@@ -16,8 +16,7 @@ LIB = $(BUILD_DIR)/libmmc.so
 endif
 
 install:
-#	headerをinstall
-#   共有ライブラリを(debug falseで)生成、適切な場所に配置
+	$(shell sed -i -e '2s/^#.*\sIS_DEBUG*/#undef IS_DEBUG/' mmc.h )
 	mkdir -p $(INSTALL_DIR)
 	cp mmc.hpp $(INSTALL_DIR)
 	mkdir -p build
@@ -36,17 +35,11 @@ $(TEST_TARGET): $(OBJS) $(TEST_OBJS)
 %.o: %.cc
 	$(CXX) -c -o $@ $^
 
-release:
-	$(shell sed -i -e '2s/^#.*\sIS_DEBUG*/#undef IS_DEBUG/' mmc.h )
-	g++ -c -o mmc_test.o mmc_test.cpp
-	g++ -c -o mmc.o mmc.cpp
-	g++ -o mmc_test mmc_test.o mmc.o
-
-
-	
-
-c:;
+clean:;
 	rm -f $(TARGET) $(OBJS) $(TEST) $(TEST).o
+	rm -rf build
+
+clean_all:;
+	make clean
 	rm -f $(INSTALL_DIR)/mmc.hpp
 	rm -f $(LIB_DST)/libmmc*
-	rm -rf build

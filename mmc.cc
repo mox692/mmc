@@ -3,8 +3,9 @@
 #include<string.h>
 #include "mmc.hpp"
 
+namespace mmc {
 // return 0 if fail.
-void *Allocator2::malloc(u64 available_size) {
+void *Allocator::malloc(u64 available_size) {
     // 1: 確保するメモリの準備(貸し出すメモリの先頭にsize情報を埋める)
     // 2: free listの更新
 
@@ -19,22 +20,20 @@ void *Allocator2::malloc(u64 available_size) {
             // freenodeの書き換え
             // 余った領域で新しく作られるFreeNodeのaddr
             void *next_free_addr = (void*)(available_size + FreeNodeSize + (u64)cur_node);
-            this->cur_free_size -= available_size + FreeNodeSize;
 
             cur_node->toUsed();
-            // tmp用
             u32 cur_node_size = cur_node->node_size();
             cur_node->change_size(available_size+FreeNodeSize);
 
             // 確保するメモリよりFreeNodeのサイズの方が大きかったら、余った領域で新しくFreeNodeを作成
             // FreeNode *next_node = new(next_free_addr) FreeNode(next_free_addr, cur_node->node_size()-FreeNodeSize-size);
+            // TODO: cur_node->node_size_available() == available_size だった場合のハンドルができていない.
             FreeNode *next_node = new(next_free_addr) FreeNode(next_free_addr, cur_node_size-available_size-FreeNodeSize);
             FreeNode *before = cur_node->prev;
             if (before == nullptr) {
                 // 先頭のNodeが置き換えられた時は、Allocatorのfreenodeを書き換える.
                 this->free_node_list = next_node;
             } else {
-                // TODO: beforeのbeforeも空だったらどうするねん？
                 before->next = next_node;
             }
             next_node->next = cur_node->next;
@@ -49,8 +48,9 @@ void *Allocator2::malloc(u64 available_size) {
 }
 
 // ptr: mallocでuserに渡したaddrが来る
-int Allocator2::free(void* ptr) {
-    FreeNode *free_node = (FreeNode*)(ptr - FreeNodeSize);
+int Allocator::free(void* ptr) {
+    u64 u_ptr = reinterpret_cast<uintptr_t>(ptr);
+    FreeNode *free_node = (FreeNode*)(u_ptr - FreeNodeSize);
     // headerの書き換え
     free_node->toFree();
 
@@ -58,11 +58,10 @@ int Allocator2::free(void* ptr) {
     if(this->append_node_to_free_list(free_node) != 0) {
         return -1;
     }
-
     return 0;
 }
 
-int Allocator2::append_node_to_free_list(FreeNode *node) {
+int Allocator::append_node_to_free_list(FreeNode *node) {
     FreeNode *current = this->free_node_list;
     if (current->prev != nullptr) {
         // currentが先頭を指してるはず.
@@ -72,6 +71,7 @@ int Allocator2::append_node_to_free_list(FreeNode *node) {
 
     void *target_addr = node->addr;
     // free_listをaddr順にsortする
+    // TODO: linked listの先頭から1つずつ比較しつつ探してるためやや遅い.
     for(;;) {
         void *cmp_addr = current->addr;
         if (target_addr < cmp_addr) {
@@ -99,43 +99,28 @@ int Allocator2::append_node_to_free_list(FreeNode *node) {
     FreeNode *prev = node->prev;
     void *next = node->next;
 
-    // DEBUG
-    // printf("me            : %u\n", my_addr);
-    // printf("prev          : %u\n", prev);
-    // printf("next          : %u\n", next);
-    // printf("me-prev.size(): %u\n", node-((FreeNode*)prev)->node_size());
-    // printf("me.size()     : %u\n", node->node_size());
-    // printf("me+me.size()  : %u\n", my_addr+node->node_size());
-        uint32_t prev_u = reinterpret_cast<uintptr_t>(prev);
-        uint32_t my_addr_u = reinterpret_cast<uintptr_t>(my_addr);
+    uint32_t prev_u = reinterpret_cast<uintptr_t>(prev);
+    uint32_t next_u = reinterpret_cast<uintptr_t>(next);
+    uint32_t my_addr_u = reinterpret_cast<uintptr_t>(my_addr);
     if (prev != nullptr && next != nullptr) {
-        if(prev->node_size()+prev_u == my_addr_u
-            && my_addr+node->node_size() == next)
-        {
-            printf("haveeeeeee\n");   
-            
+        if (prev->node_size()+prev_u == my_addr_u
+            && my_addr_u+node->node_size() == next_u
+        ) {
             FreeNode *prev_node = (FreeNode*)prev;
             FreeNode *next_next = node->next;
             prev_node->next = next_next;
             next_next->prev = prev_node;
             prev_node->change_size(node->node_size()+prev_node->node_size()+next_next->node_size());
-
         }
-    }
-    if(my_addr+node->node_size() == next) {
-        // nodeとnode->nextが連続していたら
-        FreeNode *next_node = node->next;
-        node->next = next_node->next;
-        node->change_size(node->node_size()+next_node->node_size());
-        // std::free(node->next);
+    } else if (next != nullptr) {
+        if(my_addr_u+node->node_size() == next_u) {
+            // nodeとnode->nextが連続していたら
+            FreeNode *next_node = node->next;
+            node->next = next_node->next;
+            node->change_size(node->node_size()+next_node->node_size());
+        }
     } else if (prev != nullptr) {
-        printf("prev->node_size()      : %u\n", prev->node_size());
-        printf("prev                   : %u\n", prev);
-        printf("my_addr                : %u\n", my_addr);
-        printf("prev->node_size()+prev : %u\n", prev->node_size()+prev);
-
         if (prev->node_size()+prev_u == my_addr_u) {
-            printf("foundddddd\n");
             // node->prevとnodeが連続していたら
             FreeNode *prev_node = (FreeNode*)prev;
             FreeNode *next_next = node->next;
@@ -144,11 +129,10 @@ int Allocator2::append_node_to_free_list(FreeNode *node) {
             prev_node->change_size(node->node_size()+prev_node->node_size());
         }
     }
-    
-
     return 0;
 }
-void Allocator2::display_mem_layout() const {
+
+void Allocator::display_mem_layout() const {
     using namespace std;
     cout << "== mem usage     ==" << endl;
     char* initial = (char*)this->initial_ptr;
@@ -188,7 +172,7 @@ void Allocator2::display_mem_layout() const {
     return;
 }
 
-int Allocator2::display_free_list() const {
+int Allocator::display_free_list() const {
     printf("## free list ##\n");
     FreeNode *cur = this->free_node_list;
     if (cur == nullptr) {
@@ -199,9 +183,8 @@ int Allocator2::display_free_list() const {
         printf("this->free_node_list is not head...\n");
         return -1;
     }
-
     for(;;) {
-        printf("| FreeNode(addr: %u-%u, size: %u |", cur->addr-FreeNodeSize, cur->addr+cur->node_size()-1, cur->node_size());
+        printf("| FreeNode(addr: %lu-%lu, size: %u |", (u64)(cur->addr)-FreeNodeSize, (u64)(cur->addr)+cur->node_size()-1, cur->node_size());
         if (cur->next == nullptr) {
             break;
         }
@@ -212,3 +195,5 @@ int Allocator2::display_free_list() const {
     printf("\n");
     return 0;
 }
+
+}   // namespace mmc

@@ -1,8 +1,22 @@
 #include <stdio.h>
 #include <mmc/mmc.hpp>
+using namespace mmc;
 
 int main() {
-    printf("hey\n");
-    Allocator2 *alloc = new Allocator2;
-    alloc->display_free_list();
+    Allocator *alloc = new Allocator;
+    alloc->display_mem_layout();
+
+    void *ptr1 = alloc->malloc(10);
+    alloc->display_mem_layout();
+
+    void *ptr2 = alloc->malloc(10);
+    alloc->display_mem_layout();
+
+    alloc->free(ptr1);
+    alloc->display_mem_layout();
+
+    alloc->free(ptr2);
+    alloc->display_mem_layout();
+
+    return 0;
 }

@@ -13,10 +13,18 @@
 #define DEBUG(...) 
 #endif
 
+#ifndef INITIAL_MEM_SIZE
+#define INITIAL_MEM_SIZE 1000
+#else
+#error "INITIAL_MEM_SIZE is already defined."
+#endif
+
+namespace mmc {
+
 typedef uint64_t u64;
 typedef uint32_t u32;
 
-const u32 FreeNodeSize = 40;
+constexpr u32 FreeNodeSize = 40;
 const char NodeUsed[4] = {0x10, 0x31, 0x19, 0x23};
 const char NodeFree[4] = {0x49, 0x12, 0x09, 0x78};
 
@@ -30,7 +38,6 @@ public:
         this->addr = (void*)((u64)addr + FreeNodeSize);
         this->toFree();
     };
-    // TODO:デストラクタでなんかできる処理ないか?
     ~FreeNode() {};
 
     // (headerも含めた)free node全体のサイズ
@@ -57,7 +64,7 @@ public:
     // 実際にappに貸し出すaddr(コンストラクタ参照)
     // magicを書き換える & sizeを変更する
     void *addr;
-    int change_size(u32 size) {
+    void change_size(u32 size) {
         this->size = size;
     }
 private:
@@ -65,37 +72,31 @@ private:
     u32  size;
 };
 
-
 // freenodeだけ、確保したメモリにおくようにする
 // それ以外は予めなんらかの方法でメモリが確保されているものとする.
-class Allocator2 {
+class Allocator {
 public:
-    Allocator2() {
-        this->initial_ptr = std::malloc(1000);
-        this->size = 1000;
-        this->cur_free_size = 1000 - FreeNodeSize;
-        // freenodeの初期化. freenodeは確保した1000byte中におく
+    Allocator() {
+        this->initial_ptr = std::malloc(INITIAL_MEM_SIZE);
+        this->size = INITIAL_MEM_SIZE;
+        // 領域全てをfreelistに.
         this->free_node_list = new(initial_ptr) FreeNode(this->initial_ptr, this->size);
     };
-    ~Allocator2() {
+    ~Allocator() {
         // initial_ptrを開放
         std::free(this->initial_ptr);
     };
     void *malloc(u64);
     int  free(void*);
-
     int  append_node_to_free_list(FreeNode*);
-
     void display_mem_layout() const;
     int  display_free_list() const;
 
-    // Find用に
     FreeNode *free_node_list;
 private:
+    // はじめに確保されるメモリ領域の先頭を指すpointer
     void *initial_ptr;
     // 管理領域のsize
     u64  size;
-    // 管理領域全体でも、現在のFree addr.
-    u32  cur_free_size;
-    // freeNodeの先頭addr
 };
+}   // namespace mmc

@@ -2,9 +2,10 @@
 #include<iostream>
 #include "mmc.hpp"
 
+using namespace mmc;
 
 int basic_test2() {
-    Allocator2 *alloc = new Allocator2;
+    Allocator *alloc = new Allocator;
     void *ptr = alloc->malloc(19);
     printf("get addr : %p\n", ptr);
     delete alloc;
@@ -14,7 +15,7 @@ int basic_test2() {
 
 // 表示確認するためだけのtest.(絶対ERRにはならない)
 int display_test() {
-    Allocator2 *alloc = new Allocator2;
+    Allocator *alloc = new Allocator;
     alloc->display_mem_layout();
     alloc->malloc(10);
     alloc->display_mem_layout();
@@ -22,7 +23,7 @@ int display_test() {
 }
 
 int free_test2() {
-    Allocator2 *alloc = new Allocator2;
+    Allocator *alloc = new Allocator;
     alloc->display_mem_layout();
     void *ptr = alloc->malloc(10);
     if (ptr == 0) {
@@ -46,7 +47,7 @@ int free_test2() {
 }
 
 int display_free_list_test() {
-    Allocator2 *alloc = new Allocator2;
+    Allocator *alloc = new Allocator;
     void* ptr = alloc->malloc(10);
     alloc->free(ptr);
     if(alloc->display_free_list() != 0) {
@@ -57,7 +58,7 @@ int display_free_list_test() {
 }
 
 int free_list_left_join_test() {
-    Allocator2 *alloc = new Allocator2;
+    Allocator *alloc = new Allocator;
     void* ptr1 = alloc->malloc(10);
     void* ptr2 = alloc->malloc(10);
     void* ptr3 = alloc->malloc(10);
@@ -71,7 +72,7 @@ int free_list_left_join_test() {
 }
 
 int free_list_both_size_join_test() {
-    Allocator2 *alloc = new Allocator2;
+    Allocator *alloc = new Allocator;
     void* ptr1 = alloc->malloc(10);
     void* ptr2 = alloc->malloc(10);
     void* ptr3 = alloc->malloc(10);

@@ -1,18 +1,52 @@
-my own implemantation of memory allocator like malloc.
+my own implemantation of memory allocator,  like `malloc`.
 
-## Malloc1
-### 前提
-* 先頭から指定された領域のメモリを返すだけ
-* memory内にmetadata情報は入れない
-### 結果
-* freeのタイミングで、先頭アドレスが渡されるのはいいんだけど、どの大きさをfreeすればいいのかが謎という問題に直面した
-* つまり、memoryに何らかのmetadataを保持しておく必要がありそう.
-
-
-## Malloc2
-* 前回の反省を踏まえて、freeする時に大きさがわかる構造としてメモリを管理する.
+## install
 ```
+$ make install
+```
+To run this command, `cmake` required.
+By default, this library compiled to shared obj and installed in `/usr/lib`.
 
+## Example
+I confirmed these operations on ubuntu 20.04.
+```
+$ git clone https://github.com/mox692/mmc
+$ cd mmc && make install
+$ cd examples && make build
+$ ./main
+```
+In the example directory, there is a simple program which contains 
+malloc() and free() operations and shows the changes in memory state.
+
+Result will be like this,
+
+```
+== mem usage     ==
+|addr 0000-0999 ... free(header: 0000-0039; data: 0040-0999) |
+
+== mem usage end ==
+== mem usage     ==
+|addr 0000-0049 ... used(header: 0000-0039; data: 0040-0049) |
+|addr 0050-0999 ... free(header: 0050-0089; data: 0090-0999) |
+
+== mem usage end ==
+== mem usage     ==
+|addr 0000-0049 ... used(header: 0000-0039; data: 0040-0049) |
+|addr 0050-0099 ... used(header: 0050-0089; data: 0090-0099) |
+|addr 0100-0999 ... free(header: 0100-0139; data: 0140-0999) |
+
+== mem usage end ==
+== mem usage     ==
+|addr 0000-0049 ... free(header: 0000-0039; data: 0040-0049) |
+|addr 0050-0099 ... used(header: 0050-0089; data: 0090-0099) |
+|addr 0100-0999 ... free(header: 0100-0139; data: 0140-0999) |
+
+== mem usage end ==
+== mem usage     ==
+|addr 0000-0999 ... free(header: 0000-0039; data: 0040-0999) |
+
+== mem usage end ==
 ```
 
 ## mallocの仕様について
+todo...
